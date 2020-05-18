@@ -13,7 +13,6 @@
 #include "Logger.h"
 
 
-
 class Renderer
 {
 	//Globals
@@ -80,6 +79,7 @@ Renderer::Renderer(HWND hWnd)
 	//Attach DirectX to WIndow
 	D3D_FEATURE_LEVEL DX11 = D3D_FEATURE_LEVEL_11_0;
 	DXGI_SWAP_CHAIN_DESC swapDesc;
+	
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 	swapDesc.BufferCount = 1;
 	swapDesc.OutputWindow = hWnd;
@@ -850,12 +850,14 @@ Water Renderer::InitializeObjects()
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+
 	};
 
 	vector<const wchar_t*> filePathWCharPrime;
 	filePathWCharPrime.push_back(L"Assets/tex.dds");
 
-	IslandModel = InitializeModelData(g_Device, IslandMesh.vertexList, IslandMesh.indicesList, MeshVertexShader, MeshPixelShader, sizeof(MeshVertexShader), sizeof(MeshPixelShader), meshInputEDesc, 3, filePathWCharPrime);
+	IslandModel = InitializeModelData(g_Device, IslandMesh.vertexList, IslandMesh.indicesList, MeshVertexShader, MeshPixelShader, sizeof(MeshVertexShader), sizeof(MeshPixelShader), meshInputEDesc, 4, filePathWCharPrime);
 	IslandModel.wvp.viewMatrix = defaultView;
 
 	IslandModel.wvp.projMatrix = XMMatrixPerspectiveFovLH(3.14f / 2.0f, g_aspectRatio, 0.1f, 1000000);
@@ -929,6 +931,7 @@ Water Renderer::InitializeObjects()
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"TEXCOORD", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+
 
 	};
 	Skybox = InitializeModelData(g_Device, Sky.vertexList, Sky.indicesList, SkyboxVertexShader, SkyboxPixelShader, sizeof(SkyboxVertexShader), sizeof(SkyboxPixelShader), skyInputEDesc, 3, filePathWChar);

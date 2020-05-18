@@ -14,6 +14,7 @@ struct InputVertex
 	float4 position : POSITION;
 	float3 uvw : TEXCOORD;
 	float3 nrm : NORMAL;
+	float3 tan: TANGENT;
 
 };
 struct OutputVertex
@@ -21,6 +22,8 @@ struct OutputVertex
 	float4 WVPposition : SV_POSITION; // System Value
 	float2 uv : TEXCOORD;
 	float3 nrm : NORMAL;
+
+
 	float4 color :OCOLOR;
 	float4 RawPosition : POSITION;
 	float time : TIME;

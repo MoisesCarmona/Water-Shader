@@ -312,9 +312,11 @@ vector< int > positionIndices, uvIndices, normalIndices;
 
 struct SimpleVertex
 {
-	XMFLOAT3 Pos;
+
+	XMFLOAT3 Position;
 	XMFLOAT3 Tex;
 	XMFLOAT3 Normal;
+	XMFLOAT3 Tangent;
 };
 struct SimpleVertexAnim
 {
@@ -388,19 +390,19 @@ bool Process_OBJ(const char* objFileName, const char* meshfile)
 			}
 
 			SimpleVertex v;
-			v.Pos = positionList[vertexIndex[0] - 1];
+			v.Position = positionList[vertexIndex[0] - 1];
 			v.Tex = uvList[uvIndex[0] - 1];
 			v.Normal = normalList[normalIndex[0] - 1];
 
 			mesh.vertexList.push_back(v);
 
-			v.Pos = positionList[vertexIndex[1] - 1];
+			v.Position = positionList[vertexIndex[1] - 1];
 			v.Tex = uvList[uvIndex[1] - 1];
 			v.Normal = normalList[normalIndex[1] - 1];
 
 			mesh.vertexList.push_back(v);
 
-			v.Pos = positionList[vertexIndex[2] - 1];
+			v.Position = positionList[vertexIndex[2] - 1];
 			v.Tex = uvList[uvIndex[2] - 1];
 			v.Normal = normalList[normalIndex[2] - 1];
 
@@ -810,7 +812,7 @@ XMMATRIX FBXAMatrix_To_XMMATRIX(FbxAMatrix& m);
 
 
 
-void FBX_InitLoad(const char* fbxfile, const char* meshfile, const char* matPath = "", const char* matfile = "")
+void  FBX_InitLoad(const char* fbxfile, const char* meshfile, const char* matPath, const char* matfile)
 {
 
 	// Change the following filename to a suitable filename value.
@@ -847,7 +849,7 @@ void FBX_InitLoad(const char* fbxfile, const char* meshfile, const char* matPath
 
 
 
-}
+};
 
 void Anim_FBXSkeleton_InitLoad(const char* fbxfile, const char* AnimFile, anim_clip& out_clip)
 {
@@ -1021,7 +1023,7 @@ void GetClusters(FbxSkin* skin)
 
 	}
 };
-void ProcessFbxMesh(FbxNode* Node, const char* meshfile, const char* matpath, const char* matfile)
+void  ProcessFbxMesh(FbxNode* Node, const char* meshfile, const char* matpath, const char* matfile)
 {
 	// set up output console
 	AllocConsole();
@@ -1065,9 +1067,9 @@ void ProcessFbxMesh(FbxNode* Node, const char* meshfile, const char* matpath, co
 
 				FbxVector4 vert = mesh->GetControlPointAt(j);
 
-				vertices[j].Pos.x = (float)vert.mData[0] / scale;
-				vertices[j].Pos.y = (float)vert.mData[1] / scale;
-				vertices[j].Pos.z = (float)vert.mData[2] / scale;
+				vertices[j].Position.x = (float)vert.mData[0] / scale;
+				vertices[j].Position.y = (float)vert.mData[1] / scale;
+				vertices[j].Position.z = (float)vert.mData[2] / scale;
 
 				// Get the Normals array from the mesh
 
@@ -1109,11 +1111,11 @@ void ProcessFbxMesh(FbxNode* Node, const char* meshfile, const char* matpath, co
 			}
 			// vertices is an "out" var so make sure it points to the new array
 			// and clean up first array
-			delete vertices;
+			delete  vertices;
 			vertices = vertices2;
 
 			// make new indices to match the new vertex(2) array
-			delete indices;
+			delete  indices;
 			indices = new int[numIndices];
 			for (int j = 0; j < numIndices; j++)
 			{
@@ -1302,7 +1304,7 @@ void ProcessFbxMesh(FbxNode* Node, const char* meshfile, const char* matpath, co
 
 
 
-}
+};
 void ProcessFbxMeshAnim(FbxNode* Node, const char* meshfile, const char* matpath)
 {
 	// set up output console
@@ -1643,7 +1645,7 @@ void Load_AnimFBX(const char* meshFileName, SimpleMeshAnim& mesh)
 	file.close();
 };
 
-void Load_FBX(const char* meshFileName, SimpleMesh& mesh)
+void  Load_FBX(const char* meshFileName, SimpleMesh& mesh)
 {
 
 	std::fstream file{ meshFileName, std::ios_base::in | std::ios_base::binary };
@@ -1667,7 +1669,7 @@ void Load_FBX(const char* meshFileName, SimpleMesh& mesh)
 	//Example mesh conditioning if needed - this flips handedness
 	for (auto& v : mesh.vertexList)
 	{
-		v.Pos.x = -v.Pos.x;
+		v.Position.x = -v.Position.x;
 		v.Normal.x = -v.Normal.x;
 		v.Tex.y = 1.0f - v.Tex.y;
 
@@ -1684,6 +1686,136 @@ void Load_FBX(const char* meshFileName, SimpleMesh& mesh)
 		tri[2] = temp;
 	}
 	file.close();
+};
+void  ComputeTangent(SimpleMesh& simpleMesh)
+{
+	//////////////////////Compute Normals///////////////////////////
+	//If computeNormals was set to true then we will create our own
+	//normals, if it was set to false we will use the obj files normals
+	std::vector<XMFLOAT3> tempNormal;
+
+	//normalized and unnormalized normals
+	XMFLOAT3 unnormalized = XMFLOAT3(0.0f, 0.0f, 0.0f);
+
+	///////////////**************new**************////////////////////
+	//tangent stuff
+	std::vector<XMFLOAT3> tempTangent;
+	XMFLOAT3 tangent = XMFLOAT3(0.0f, 0.0f, 0.0f);
+	float tcU1, tcV1, tcU2, tcV2;
+	///////////////**************new**************////////////////////
+
+	//Used to get vectors (sides) from the position of the verts
+	float vecX, vecY, vecZ;
+
+	//Two edges of our triangle
+	XMVECTOR edge1 = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	XMVECTOR edge2 = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+
+	//Compute face normals
+	//And Tangents
+	for (int i = 0; i < simpleMesh.indicesList.size() / 3; ++i)
+	{
+		//Get the vector describing one edge of our triangle (edge 0,2)
+		vecX = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3)]].Position.x - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.x;
+		vecY = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3)]].Position.y - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.y;
+		vecZ = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3)]].Position.z - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.z;
+		edge1 = XMVectorSet(vecX, vecY, vecZ, 0.0f);    //Create our first edge
+
+		//Get the vector describing another edge of our triangle (edge 2,1)
+		vecX = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.x - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 1]].Position.x;
+		vecY = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.y - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 1]].Position.y;
+		vecZ = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Position.z - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 1]].Position.z;
+		edge2 = XMVectorSet(vecX, vecY, vecZ, 0.0f);    //Create our second edge
+
+		//Cross multiply the two edge vectors to get the un-normalized face normal
+		XMStoreFloat3(&unnormalized, XMVector3Cross(edge1, edge2));
+
+		tempNormal.push_back(unnormalized);
+
+		///////////////**************new**************////////////////////
+		//Find first texture coordinate edge 2d vector
+		tcU1 = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3)]].Tex.x - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Tex.x;
+		tcV1 = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3)]].Tex.y - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Tex.y;
+
+		//Find second texture coordinate edge 2d vector
+		tcU2 = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Tex.x - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 1]].Tex.x;
+		tcV2 = simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 2]].Tex.y - simpleMesh.vertexList[simpleMesh.indicesList[(i * 3) + 1]].Tex.y;
+
+		//Find tangent using both tex coord edges and position edges
+		tangent.x = (tcV1 * XMVectorGetX(edge1) - tcV2 * XMVectorGetX(edge2)) * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1));
+		tangent.y = (tcV1 * XMVectorGetY(edge1) - tcV2 * XMVectorGetY(edge2)) * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1));
+		tangent.z = (tcV1 * XMVectorGetZ(edge1) - tcV2 * XMVectorGetZ(edge2)) * (1.0f / (tcU1 * tcV2 - tcU2 * tcV1));
+
+		tempTangent.push_back(tangent);
+		///////////////**************new**************////////////////////
+	}
+
+	//Compute vertex normals (normal Averaging)
+	XMVECTOR normalSum = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	XMVECTOR tangentSum = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+	int facesUsing = 0;
+	float tX, tY, tZ;    //temp axis variables
+
+	//Go through each vertex
+	for (int i = 0; i < simpleMesh.vertexList.size(); ++i)
+	{
+		//Check which triangles use this vertex
+		for (int j = 0; j < simpleMesh.indicesList.size() / 3; ++j)
+		{
+			if (simpleMesh.indicesList[j * 3] == i ||
+				simpleMesh.indicesList[(j * 3) + 1] == i ||
+				simpleMesh.indicesList[(j * 3) + 2] == i)
+			{
+				tX = XMVectorGetX(normalSum) + tempNormal[j].x;
+				tY = XMVectorGetY(normalSum) + tempNormal[j].y;
+				tZ = XMVectorGetZ(normalSum) + tempNormal[j].z;
+
+				normalSum = XMVectorSet(tX, tY, tZ, 0.0f);    //If a face is using the vertex, add the unormalized face normal to the normalSum
+
+				///////////////**************new**************////////////////////        
+				//We can reuse tX, tY, tZ to sum up tangents
+				tX = XMVectorGetX(tangentSum) + tempTangent[j].x;
+				tY = XMVectorGetY(tangentSum) + tempTangent[j].y;
+				tZ = XMVectorGetZ(tangentSum) + tempTangent[j].z;
+
+				tangentSum = XMVectorSet(tX, tY, tZ, 0.0f); //sum up face tangents using this vertex
+				///////////////**************new**************////////////////////
+
+				facesUsing++;
+			}
+		}
+
+		//Get the actual normal by dividing the normalSum by the number of faces sharing the vertex
+		normalSum = normalSum / facesUsing;
+		///////////////**************new**************////////////////////
+		tangentSum = tangentSum / facesUsing;
+		///////////////**************new**************////////////////////
+
+		//Normalize the normalSum vector and tangent
+		normalSum = XMVector3Normalize(normalSum);
+		///////////////**************new**************////////////////////
+		tangentSum = XMVector3Normalize(tangentSum);
+		///////////////**************new**************////////////////////
+
+		//Store the normal and tangent in our current vertex
+		simpleMesh.vertexList[i].Normal.x = XMVectorGetX(normalSum);
+		simpleMesh.vertexList[i].Normal.y = XMVectorGetY(normalSum);
+		simpleMesh.vertexList[i].Normal.z = XMVectorGetZ(normalSum);
+
+		///////////////**************new**************////////////////////
+		simpleMesh.vertexList[i].Tangent.x = XMVectorGetX(tangentSum);
+		simpleMesh.vertexList[i].Tangent.y = XMVectorGetY(tangentSum);
+		simpleMesh.vertexList[i].Tangent.z = XMVectorGetZ(tangentSum);
+		///////////////**************new**************////////////////////
+
+		//Clear normalSum, tangentSum and facesUsing for next vertex
+		normalSum = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+		///////////////**************new**************////////////////////
+		tangentSum = XMVectorSet(0.0f, 0.0f, 0.0f, 0.0f);
+		///////////////**************new**************////////////////////
+		facesUsing = 0;
+
+	}
 };
 
 void CompactifyAnim(SimpleVertexAnim* verticesCompact, const char* meshfile)
@@ -1784,7 +1916,7 @@ void CompactifyAnim(SimpleVertexAnim* verticesCompact, const char* meshfile)
 
 
 }
-void Compactify(SimpleVertex* verticesCompact, const char* meshfile)
+void  Compactify(SimpleVertex* verticesCompact, const char* meshfile)
 {
 
 	float epsilon = 0.0001;
@@ -1806,9 +1938,9 @@ void Compactify(SimpleVertex* verticesCompact, const char* meshfile)
 		{
 
 
-			if ((abs(verticesCompact[i].Pos.x - vertexList[j].Pos.x) < epsilon) &&
-				(abs(verticesCompact[i].Pos.y - vertexList[j].Pos.y) < epsilon) &&
-				(abs(verticesCompact[i].Pos.z - vertexList[j].Pos.z) < epsilon) &&
+			if ((abs(verticesCompact[i].Position.x - vertexList[j].Position.x) < epsilon) &&
+				(abs(verticesCompact[i].Position.y - vertexList[j].Position.y) < epsilon) &&
+				(abs(verticesCompact[i].Position.z - vertexList[j].Position.z) < epsilon) &&
 				(abs(verticesCompact[i].Normal.x - vertexList[j].Normal.x) < epsilon) &&
 				(abs(verticesCompact[i].Normal.y - vertexList[j].Normal.y) < epsilon) &&
 				(abs(verticesCompact[i].Normal.z - vertexList[j].Normal.z) < epsilon) &&
@@ -1846,6 +1978,12 @@ void Compactify(SimpleVertex* verticesCompact, const char* meshfile)
 		indicesList.push_back(indices[i]);
 	}
 
+	SimpleMesh GenerateTangents;
+	GenerateTangents.vertexList = vertexList;
+	GenerateTangents.indicesList = indicesList;
+	ComputeTangent(GenerateTangents);
+	vertexList = GenerateTangents.vertexList;
+	indicesList = GenerateTangents.indicesList;
 
 	// print out some stats
 	//std::cout << "\nindex count BEFORE/AFTER compaction " << numIndices;
@@ -1861,6 +1999,7 @@ void Compactify(SimpleVertex* verticesCompact, const char* meshfile)
 
 	assert(file.is_open());
 
+
 	uint32_t index_count = (uint32_t)indicesList.size();
 	uint32_t vert_count = (uint32_t)vertexList.size();
 
@@ -1872,7 +2011,7 @@ void Compactify(SimpleVertex* verticesCompact, const char* meshfile)
 	file.close();
 
 
-}
+};
 
 XMMATRIX FBXAMatrix_To_XMMATRIX(FbxAMatrix& m)
 {
