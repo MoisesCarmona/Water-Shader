@@ -48,7 +48,7 @@ class Renderer
 	ID3D11Buffer* lightBuffer = nullptr;
 
 	XMMATRIX defaultView = XMMatrixLookToLH({ 0,1000,1000 }, { 0, 0, 1 }, { 0,1,0 });
-	Water WATA;
+	Water waterPond;
 
 	HWND handle;
 
@@ -59,7 +59,7 @@ public:
 
 
 	void Draw();
-	Water InitializeObjects();
+	void InitializeObjects();
 	void Release();
 
 
@@ -79,7 +79,7 @@ Renderer::Renderer(HWND hWnd)
 	//Attach DirectX to WIndow
 	D3D_FEATURE_LEVEL DX11 = D3D_FEATURE_LEVEL_11_0;
 	DXGI_SWAP_CHAIN_DESC swapDesc;
-	
+
 	ZeroMemory(&swapDesc, sizeof(DXGI_SWAP_CHAIN_DESC));
 	swapDesc.BufferCount = 1;
 	swapDesc.OutputWindow = hWnd;
@@ -158,7 +158,7 @@ Renderer::Renderer(HWND hWnd)
 
 
 #pragma endregion
-//Extra
+	//Extra
 	D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
 	ZeroMemory(&depthStencilStateDesc, sizeof(D3D11_DEPTH_STENCIL_DESC));
 	depthStencilStateDesc.DepthEnable = true;
@@ -176,12 +176,12 @@ Renderer::Renderer(HWND hWnd)
 
 
 
-	WATA = InitializeObjects();
+	InitializeObjects();
 
 }
 Renderer::~Renderer()
 {
-	WATA.Release();
+	waterPond.Release();
 	SphereReflect.Release();
 	IslandTexture.Release();
 	IslandModel.Release();
@@ -208,17 +208,17 @@ void Renderer::Draw()
 {
 	XMVECTOR clipPlane = { 0.0f, -1.0f, 1.0f };
 
-	
+
 	Logger::log("M");
-	
 
 
-	
-	
-WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime() ;
-	
-	
-	
+
+
+
+	waterPond.waterBufferData.waterTranslation = WBT.waterTranslation = timeX.TotalTime();
+
+
+
 	D3D11_MAPPED_SUBRESOURCE gpuBuffer;
 
 	//Rendering
@@ -236,18 +236,18 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 	g_aspectRatio = g_width / g_height;
 
 
-	WATA.WaterWVPCam.projMatrix =IslandTexture.wvp.projMatrix = Water_Old.wvp.projMatrix = SphereReflect.wvp.projMatrix = Anim.wvp.projMatrix = IslandModel.wvp.projMatrix = Skybox.wvp.projMatrix = XMMatrixPerspectiveFovLH(3.14f / 2.0f, g_aspectRatio, 0.1f, 1000000);
-	WATA.WaterWVPCam.viewMatrix = IslandTexture.wvp.viewMatrix =	 Water_Old.wvp.viewMatrix =  IslandModel.wvp.viewMatrix = Anim.wvp.viewMatrix =  Skybox.wvp.viewMatrix;
-	 
+	waterPond.WaterWVPCam.projMatrix = IslandTexture.wvp.projMatrix = Water_Old.wvp.projMatrix = SphereReflect.wvp.projMatrix = Anim.wvp.projMatrix = IslandModel.wvp.projMatrix = Skybox.wvp.projMatrix = XMMatrixPerspectiveFovLH(3.14f / 2.0f, g_aspectRatio, 0.1f, 1000000);
+	waterPond.WaterWVPCam.viewMatrix = IslandTexture.wvp.viewMatrix = Water_Old.wvp.viewMatrix = IslandModel.wvp.viewMatrix = Anim.wvp.viewMatrix = Skybox.wvp.viewMatrix;
+
 #pragma region Skybox
-	
+
 	XMMATRIX InvView = XMMatrixInverse(nullptr, IslandModel.wvp.viewMatrix);
 	XMVECTOR YReflect = { 0,-1,0 };
-	
-	WATA.ReflectionBufferData.reflection = RBT.reflection  = SphereReflect.wvp.viewMatrix = RenderReflection(IslandModel.wvp.viewMatrix, 2.75);;
+
+	waterPond.ReflectionBufferData.reflection = RBT.reflection = SphereReflect.wvp.viewMatrix = RenderReflection(IslandModel.wvp.viewMatrix, 2.75);;
 	SphereReflect.wvp.cam = { InvView.r[3].m128_f32[0],-InvView.r[3].m128_f32[1],InvView.r[3].m128_f32[2], 1 };
 
-	WATA.WaterWVPCam.cam = Water_Old.wvp.cam = Skybox.wvp.cam = { InvView.r[3].m128_f32[0],InvView.r[3].m128_f32[1],InvView.r[3].m128_f32[2], 1 };
+	waterPond.WaterWVPCam.cam = Water_Old.wvp.cam = Skybox.wvp.cam = { InvView.r[3].m128_f32[0],InvView.r[3].m128_f32[1],InvView.r[3].m128_f32[2], 1 };
 
 	ID3D11Buffer* meshVBSky[] = { Skybox.VBuffer };
 	UINT mesh_stridesSky[] = { sizeof(SimpleVertex) };
@@ -289,7 +289,7 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 	T = XMMatrixMultiply(XMMatrixScaling(1000.0f, 1000.0f, 1000.0f), T);
 	Skybox.wvp.worldMatrix = XMMatrixMultiply(Skybox.wvp.worldMatrix, T);
 
-	
+
 
 	// Send it to Video Card
 
@@ -309,36 +309,36 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 
 #pragma region RendertoTextureIslandRefraction
 
-	g_DeviceContext->ClearDepthStencilView(WATA.zBufferRTT, D3D11_CLEAR_DEPTH, 1, 0); // clear it to Z exponential Far.
-	
-	ID3D11RenderTargetView* const RTTtarget[] = {WATA.RTTRenderTV_Refraction };
-	g_DeviceContext->OMSetRenderTargets(1, RTTtarget, WATA.zBufferRTT);
+	g_DeviceContext->ClearDepthStencilView(waterPond.zBufferRTT, D3D11_CLEAR_DEPTH, 1, 0); // clear it to Z exponential Far.
+
+	ID3D11RenderTargetView* const RTTtarget[] = { waterPond.RTTRenderTV_Refraction };
+	g_DeviceContext->OMSetRenderTargets(1, RTTtarget, waterPond.zBufferRTT);
 	g_DeviceContext->ClearRenderTargetView(RTTtarget[0], color);
-	g_DeviceContext->RSSetViewports(1, &WATA.RTT_viewport);
+	g_DeviceContext->RSSetViewports(1, &waterPond.RTT_viewport);
 
 
 
 	ID3D11Buffer* meshVBRTT[] = { IslandTexture.VBuffer };
 	UINT mesh_stridesRTT[] = { sizeof(SimpleVertex) };
 	UINT mesh_offsetsRTT[] = { 0 };
-					 
+
 	g_DeviceContext->IASetVertexBuffers(0, 1, meshVBRTT, mesh_stridesRTT, mesh_offsetsRTT);
 	g_DeviceContext->IASetIndexBuffer(IslandTexture.IBuffer, DXGI_FORMAT_R32_UINT, 0);
 	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	g_DeviceContext->VSSetShader(WATA.VertexShader_Refraction, 0, 0);
+	g_DeviceContext->VSSetShader(waterPond.VertexShader_Refraction, 0, 0);
 
-	g_DeviceContext->IASetInputLayout(WATA.VertexLayout_Refract);
+	g_DeviceContext->IASetInputLayout(waterPond.VertexLayout_Refract);
 
-	
+
 
 	ID3D11ShaderResourceView* texViews[]{ IslandTexture.TextureView_Diffuse };
 
 
 
-	g_DeviceContext->PSSetShader(WATA.PixelShader_Refraction, 0, 0);
+	g_DeviceContext->PSSetShader(waterPond.PixelShader_Refraction, 0, 0);
 	g_DeviceContext->PSSetShaderResources(0, 1, texViews);
-	g_DeviceContext->PSSetSamplers(0, 1, &WATA.wrapState);
+	g_DeviceContext->PSSetSamplers(0, 1, &waterPond.wrapState);
 
 
 	//Modify world Matrix before drawing
@@ -358,19 +358,19 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 
 	// Send it to Video Card
 	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-	ID3D11Buffer* constantsRTT[] = { IslandTexture.constantBuffer, clipBuffer  };
+	ID3D11Buffer* constantsRTT[] = { IslandTexture.constantBuffer, clipBuffer };
 
 	g_DeviceContext->Map(IslandTexture.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((WVP*)(gpuBuffer.pData)) = IslandTexture.wvp;
 	g_DeviceContext->Unmap(IslandTexture.constantBuffer, 0);
 
-	g_DeviceContext->Map(WATA.clipBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	g_DeviceContext->Map(waterPond.clipBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((XMVECTOR*)(gpuBuffer.pData)) = clipPlane;
-	g_DeviceContext->Unmap(WATA.clipBuffer, 0);
+	g_DeviceContext->Unmap(waterPond.clipBuffer, 0);
 
-	g_DeviceContext->Map(WATA.lightBuffer , 0, D3D11_MAP_WRITE_DISCARD, 0, & gpuBuffer);
+	g_DeviceContext->Map(waterPond.lightBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
 	*((LBF*)(gpuBuffer.pData)) = lightColorDir;
-	g_DeviceContext->Unmap(WATA.lightBuffer, 0);
+	g_DeviceContext->Unmap(waterPond.lightBuffer, 0);
 
 
 
@@ -378,7 +378,7 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 
 	g_DeviceContext->VSSetConstantBuffers(0, 2, constantsRTT);
 
-	g_DeviceContext->PSSetConstantBuffers(0, 1, &WATA.lightBuffer);
+	g_DeviceContext->PSSetConstantBuffers(0, 1, &waterPond.lightBuffer);
 
 
 
@@ -387,18 +387,18 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 	g_DeviceContext->DrawIndexed(IslandTexture.IndexCount, 0, 0);
 
 
-	g_DeviceContext->GenerateMips(WATA.TextureView_RTT_Refraction);
+	g_DeviceContext->GenerateMips(waterPond.TextureView_RTT_Refraction);
 
 
 
 #pragma endregion
 #pragma region SphereReflection
 
-	g_DeviceContext->ClearDepthStencilView(WATA.zBufferRTT, D3D11_CLEAR_DEPTH, 1, 0); // clear it to Z exponential Far.
+	g_DeviceContext->ClearDepthStencilView(waterPond.zBufferRTT, D3D11_CLEAR_DEPTH, 1, 0); // clear it to Z exponential Far.
 
-	ID3D11RenderTargetView* const RTTtarget2[] = { WATA.RTTRenderTV_Reflection};
-	g_DeviceContext->OMSetRenderTargets(1, RTTtarget2, WATA.zBufferRTT);
-	g_DeviceContext->RSSetViewports(1, &WATA.RTT_viewport);
+	ID3D11RenderTargetView* const RTTtarget2[] = { waterPond.RTTRenderTV_Reflection };
+	g_DeviceContext->OMSetRenderTargets(1, RTTtarget2, waterPond.zBufferRTT);
+	g_DeviceContext->RSSetViewports(1, &waterPond.RTT_viewport);
 
 	g_DeviceContext->ClearRenderTargetView(RTTtarget2[0], color);
 
@@ -425,22 +425,22 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 
 	g_DeviceContext->PSSetShader(SphereReflect.PShader, 0, 0);
 	g_DeviceContext->PSSetShaderResources(0, 1, texViews2);
-	g_DeviceContext->PSSetSamplers(0, 1, &WATA.wrapState);
+	g_DeviceContext->PSSetSamplers(0, 1, &waterPond.wrapState);
 
 
 	//Modify world Matrix before drawing
 	//My_Matrices.time = timeX.TotalTimeExact();
-	
+
 
 	//SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, zero);
 	//SphereReflect.wvp.worldMatrix = XMMatrixIdentity();
 
-		SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, zeroSky);
+	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, zeroSky);
 	SphereReflect.wvp.worldMatrix = XMMatrixIdentity();
 
-	XMMATRIX T2= XMMatrixTranslation(SphereReflect.wvp.cam.m128_f32[0], SphereReflect.wvp.cam.m128_f32[1], SphereReflect.wvp.cam.m128_f32[2]);
+	XMMATRIX T2 = XMMatrixTranslation(SphereReflect.wvp.cam.m128_f32[0], SphereReflect.wvp.cam.m128_f32[1], SphereReflect.wvp.cam.m128_f32[2]);
 
-	T2= XMMatrixMultiply(XMMatrixScaling(1000.0f, 1000.0f, 1000.0f), T2);
+	T2 = XMMatrixMultiply(XMMatrixScaling(1000.0f, 1000.0f, 1000.0f), T2);
 	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, T2);
 
 
@@ -469,63 +469,63 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 	g_DeviceContext->ClearDepthStencilView(g_zBuffer, D3D11_CLEAR_DEPTH, 1, 0); // clear it to Z exponential Far.
 
 	g_DeviceContext->OMSetRenderTargets(1, tempRTV, g_zBuffer);
-	
+
 	camera_move(Skybox.wvp.viewMatrix);
-//#pragma region Sphere
-//	SphereReflect.wvp.viewMatrix = IslandModel.wvp.viewMatrix;
-//
-//
-//	ID3D11Buffer* meshVBSphere[] = { SphereReflect.VBuffer };
-//	UINT mesh_stridesSphere[] = { sizeof(SimpleVertex) };
-//	UINT mesh_offsetsSphere[] = { 0 };
-//
-//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVBSphere, mesh_stridesSphere, mesh_offsetsSphere);
-//	g_DeviceContext->IASetIndexBuffer(SphereReflect.IBuffer, DXGI_FORMAT_R32_UINT, 0);
-//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-//
-//	g_DeviceContext->VSSetShader(SphereReflect.VShader, 0, 0);
-//
-//	g_DeviceContext->IASetInputLayout(SphereReflect.VLayout);
-//
-//
-//	ID3D11ShaderResourceView* texViewsNo[]{ Skybox.TextureView_SkyBox };
-//
-//
-//
-//	g_DeviceContext->PSSetShader(SphereReflect.PShader, 0, 0);
-//	g_DeviceContext->PSSetShaderResources(0, 1, texViews2);
-//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
-//
-//
-//	//Modify world Matrix before drawing
-//	//My_Matrices.time = timeX.TotalTimeExact();
-//
-//
-//	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, zero);
-//	SphereReflect.wvp.worldMatrix = XMMatrixIdentity();
-//	SphereReflect.wvp.worldMatrix = XMMatrixTranslation(0, 10, 0);
-//
-//
-//
-//
-//	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, XMMatrixScaling(100.0f, 100.0f, 100.0f));
-//
-//
-//
-//	// Send it to Video Card
-//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-//	ID3D11Buffer* constantsSphere[] = { SphereReflect.constantBuffer };
-//
-//	g_DeviceContext->Map(SphereReflect.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-//	*((WVP*)(gpuBuffer.pData)) = SphereReflect.wvp;
-//	g_DeviceContext->Unmap(SphereReflect.constantBuffer, 0);
-//
-//	g_DeviceContext->VSSetConstantBuffers(0, 1, constantsSphere);
-//
-//	//g_DeviceContext->DrawIndexed(SphereReflect.IndexCount, 0, 0);
-//
-//
-//#pragma endregion
+	//#pragma region Sphere
+	//	SphereReflect.wvp.viewMatrix = IslandModel.wvp.viewMatrix;
+	//
+	//
+	//	ID3D11Buffer* meshVBSphere[] = { SphereReflect.VBuffer };
+	//	UINT mesh_stridesSphere[] = { sizeof(SimpleVertex) };
+	//	UINT mesh_offsetsSphere[] = { 0 };
+	//
+	//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVBSphere, mesh_stridesSphere, mesh_offsetsSphere);
+	//	g_DeviceContext->IASetIndexBuffer(SphereReflect.IBuffer, DXGI_FORMAT_R32_UINT, 0);
+	//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//
+	//	g_DeviceContext->VSSetShader(SphereReflect.VShader, 0, 0);
+	//
+	//	g_DeviceContext->IASetInputLayout(SphereReflect.VLayout);
+	//
+	//
+	//	ID3D11ShaderResourceView* texViewsNo[]{ Skybox.TextureView_SkyBox };
+	//
+	//
+	//
+	//	g_DeviceContext->PSSetShader(SphereReflect.PShader, 0, 0);
+	//	g_DeviceContext->PSSetShaderResources(0, 1, texViews2);
+	//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
+	//
+	//
+	//	//Modify world Matrix before drawing
+	//	//My_Matrices.time = timeX.TotalTimeExact();
+	//
+	//
+	//	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, zero);
+	//	SphereReflect.wvp.worldMatrix = XMMatrixIdentity();
+	//	SphereReflect.wvp.worldMatrix = XMMatrixTranslation(0, 10, 0);
+	//
+	//
+	//
+	//
+	//	SphereReflect.wvp.worldMatrix = XMMatrixMultiply(SphereReflect.wvp.worldMatrix, XMMatrixScaling(100.0f, 100.0f, 100.0f));
+	//
+	//
+	//
+	//	// Send it to Video Card
+	//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
+	//	ID3D11Buffer* constantsSphere[] = { SphereReflect.constantBuffer };
+	//
+	//	g_DeviceContext->Map(SphereReflect.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//	*((WVP*)(gpuBuffer.pData)) = SphereReflect.wvp;
+	//	g_DeviceContext->Unmap(SphereReflect.constantBuffer, 0);
+	//
+	//	g_DeviceContext->VSSetConstantBuffers(0, 1, constantsSphere);
+	//
+	//	//g_DeviceContext->DrawIndexed(SphereReflect.IndexCount, 0, 0);
+	//
+	//
+	//#pragma endregion
 
 
 #pragma region Island
@@ -580,77 +580,77 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 	//Draw
 	g_DeviceContext->DrawIndexed(IslandModel.IndexCount, 0, 0);
 #pragma endregion
-//#pragma region waterplane
-//	ID3D11Buffer* meshVBW[] = { Water_Old.VBuffer };
-//	UINT mesh_stridesW[] = { sizeof(SimpleVertex) };
-//	UINT mesh_offsetsW[] = { 0 };
-//
-//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVBW, mesh_stridesW, mesh_offsetsW);
-//	g_DeviceContext->IASetIndexBuffer(Water_Old.IBuffer, DXGI_FORMAT_R32_UINT, 0);
-//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-//
-//	g_DeviceContext->VSSetShader(WATA.VertexShader_Water, 0, 0);
-//
-//	g_DeviceContext->IASetInputLayout(WATA.VertexLayout);
-//	
-//
-//	ID3D11ShaderResourceView* texViewsW[]{ Water_Old.TextureView_Diffuse,SphereReflect.TextureView_RTT, IslandTexture.TextureView_RTT };
-//
-//
-//
-//	g_DeviceContext->PSSetShader(Water_Old.PShader, 0, 0);
-//	g_DeviceContext->PSSetShaderResources(0, 3, texViewsW);
-//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
-//
-//
-//	//Modify world Matrix before drawing
-//	//My_Matrices.time = timeX.TotalTimeExact();
-//	//XMMATRIX zero
-//	//{ 0,0,0,0,
-//	//  0,0,0,0,
-//	//  0,0,0,0,
-//	//  0,0,0,0 };
-//
-//	Water_Old.wvp.worldMatrix = XMMatrixMultiply(Water_Old.wvp.worldMatrix, zero);
-//	Water_Old.wvp.worldMatrix = XMMatrixIdentity();
-//
-//Water_Old.wvp.worldMatrix = XMMatrixMultiply(Water_Old.wvp.worldMatrix, XMMatrixScaling(300000, 300000, 300000));
-//
-//
-//WBT.padding = { 0,0 };
-//WBT.reflectRefractScale = 0.01f;
-//
-//	// Send it to Video Card
-//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-//	ID3D11Buffer* constantsW[] = { Water_Old.constantBuffer, g_reflectionBuffer };
-//
-//	g_DeviceContext->Map(Water_Old.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-//	*((WVP*)(gpuBuffer.pData)) = Water_Old.wvp;
-//	g_DeviceContext->Unmap(Water_Old.constantBuffer, 0);
-//
-//	g_DeviceContext->Map(g_reflectionBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-//	*((ReflectionBufferType*)(gpuBuffer.pData)) = RBT;
-//	g_DeviceContext->Unmap(g_reflectionBuffer, 0);
-//	g_DeviceContext->VSSetConstantBuffers(0, 2, constantsW);
-//
-//	g_DeviceContext->Map(g_waterBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-//	*((WaterBufferType*)(gpuBuffer.pData)) = WBT;
-//	g_DeviceContext->Unmap(g_waterBuffer, 0);
-//	g_DeviceContext->PSSetConstantBuffers(0, 1, &g_waterBuffer);
-//
-//		
-//
-//
-//
-//	//Draw
-//	g_DeviceContext->DrawIndexed(Water_Old.IndexCount, 0, 0);
-//	ID3D11ShaderResourceView* null[] = { nullptr, nullptr, nullptr};
-//	g_DeviceContext->PSSetShaderResources(0, 3, null);
-//
-//#pragma endregion
+	//#pragma region waterplane
+	//	ID3D11Buffer* meshVBW[] = { Water_Old.VBuffer };
+	//	UINT mesh_stridesW[] = { sizeof(SimpleVertex) };
+	//	UINT mesh_offsetsW[] = { 0 };
+	//
+	//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVBW, mesh_stridesW, mesh_offsetsW);
+	//	g_DeviceContext->IASetIndexBuffer(Water_Old.IBuffer, DXGI_FORMAT_R32_UINT, 0);
+	//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//
+	//	g_DeviceContext->VSSetShader(WATA.VertexShader_Water, 0, 0);
+	//
+	//	g_DeviceContext->IASetInputLayout(WATA.VertexLayout);
+	//	
+	//
+	//	ID3D11ShaderResourceView* texViewsW[]{ Water_Old.TextureView_Diffuse,SphereReflect.TextureView_RTT, IslandTexture.TextureView_RTT };
+	//
+	//
+	//
+	//	g_DeviceContext->PSSetShader(Water_Old.PShader, 0, 0);
+	//	g_DeviceContext->PSSetShaderResources(0, 3, texViewsW);
+	//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
+	//
+	//
+	//	//Modify world Matrix before drawing
+	//	//My_Matrices.time = timeX.TotalTimeExact();
+	//	//XMMATRIX zero
+	//	//{ 0,0,0,0,
+	//	//  0,0,0,0,
+	//	//  0,0,0,0,
+	//	//  0,0,0,0 };
+	//
+	//	Water_Old.wvp.worldMatrix = XMMatrixMultiply(Water_Old.wvp.worldMatrix, zero);
+	//	Water_Old.wvp.worldMatrix = XMMatrixIdentity();
+	//
+	//Water_Old.wvp.worldMatrix = XMMatrixMultiply(Water_Old.wvp.worldMatrix, XMMatrixScaling(300000, 300000, 300000));
+	//
+	//
+	//WBT.padding = { 0,0 };
+	//WBT.reflectRefractScale = 0.01f;
+	//
+	//	// Send it to Video Card
+	//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
+	//	ID3D11Buffer* constantsW[] = { Water_Old.constantBuffer, g_reflectionBuffer };
+	//
+	//	g_DeviceContext->Map(Water_Old.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//	*((WVP*)(gpuBuffer.pData)) = Water_Old.wvp;
+	//	g_DeviceContext->Unmap(Water_Old.constantBuffer, 0);
+	//
+	//	g_DeviceContext->Map(g_reflectionBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//	*((ReflectionBufferType*)(gpuBuffer.pData)) = RBT;
+	//	g_DeviceContext->Unmap(g_reflectionBuffer, 0);
+	//	g_DeviceContext->VSSetConstantBuffers(0, 2, constantsW);
+	//
+	//	g_DeviceContext->Map(g_waterBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//	*((WaterBufferType*)(gpuBuffer.pData)) = WBT;
+	//	g_DeviceContext->Unmap(g_waterBuffer, 0);
+	//	g_DeviceContext->PSSetConstantBuffers(0, 1, &g_waterBuffer);
+	//
+	//		
+	//
+	//
+	//
+	//	//Draw
+	//	g_DeviceContext->DrawIndexed(Water_Old.IndexCount, 0, 0);
+	//	ID3D11ShaderResourceView* null[] = { nullptr, nullptr, nullptr};
+	//	g_DeviceContext->PSSetShaderResources(0, 3, null);
+	//
+	//#pragma endregion
 
 
-	WATA.DrawWater(g_DeviceContext, Water_Old.VBuffer, Water_Old.IBuffer, sizeof(SimpleVertex), Water_Old.IndexCount, true);
+	waterPond.DrawWater(g_DeviceContext, Water_Old.VBuffer, Water_Old.IBuffer, sizeof(SimpleVertex), Water_Old.IndexCount, true);
 #pragma region Skele
 	static bool keypress = false;
 	if (GetAsyncKeyState('P'))
@@ -746,75 +746,75 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 
 
 #pragma region Mage
-		//	XMVECTOR Q1;
-		//	XMVECTOR Q2;
-		//
-		//
-		//	for(unsigned int matrixIndex = 0;matrixIndex < MageModel.Animation_Clip.frames[counter].jointsMatrix.size(); matrixIndex++ )
-		//	{
-		//		Q1 = XMQuaternionRotationMatrix(MageModel.Animation_Clip.frames[counter].jointsMatrix[matrixIndex]);
-		//		Q2 = XMQuaternionRotationMatrix(MageModel.Animation_Clip.frames[counter + 1].jointsMatrix[matrixIndex]);
-		//		
-		//		  XMStoreFloat4x4 (&MageModel.wvp.AnimJoint[matrixIndex], XMMatrixRotationQuaternion(XMQuaternionSlerp(Q1, Q2, mod)) );
-		//	}
-		//	/*	for (unsigned int matrixIndex = 0; matrixIndex < MageModel.Animation_Clip.frames[counter].jointsMatrix.size(); matrixIndex++)
-		//		{
-		//			XMStoreFloat4x4 (&MageModel.wvp.AnimJoint[matrixIndex], MageModel.Animation_Clip.frames[counter].jointsMatrix[matrixIndex]);
-		//		}*/
-		//	
-		//	ID3D11Buffer* meshVB2[] = { MageModel.VBuffer };
-		//	UINT mesh_strides2[] = { sizeof(SimpleVertexAnim) };
-		//	UINT mesh_offsets2[] = { 0 };
-		//
-		//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVB2, mesh_strides2, mesh_offsets2);
-		//	g_DeviceContext->IASetIndexBuffer(MageModel.IBuffer, DXGI_FORMAT_R32_UINT, 0);
-		//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
-		//
-		//	g_DeviceContext->VSSetShader(MageModel.VShader, 0, 0);
-		//
-		//	g_DeviceContext->IASetInputLayout(MageModel.VLayout);
-		//
-		//	ID3D11ShaderResourceView* texViews2[]{ MageModel.TextureView_Diffuse ,MageModel.TextureView_Emissive,MageModel.TextureView_Specular };
-		//
-		//
-		//	g_DeviceContext->PSSetShader(MageModel.PShader, 0, 0);
-		//	g_DeviceContext->PSSetShaderResources(0, 3, texViews2);
-		//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
-		//
-		//
-		//	//Modify world Matrix before drawing
-		//	//My_Matrices.time = timeX.TotalTimeExact();
-		//	XMMATRIX zero2
-		//	{ 0,0,0,0,
-		//	  0,0,0,0,
-		//	  0,0,0,0,
-		//	  0,0,0,0 };
-		//	//camera_move(MageModel.wvp.viewMatrix);
-		//
-		//	MageModel.wvp.cam = { MageModel.wvp.viewMatrix.r[3].m128_f32[0],MageModel.wvp.viewMatrix.r[3].m128_f32[1],MageModel.wvp.viewMatrix.r[3].m128_f32[2] };
-		//
-		//	//IslandModel.wvp.viewMatrix = (XMMatrixInverse(nullptr, IslandModel.wvp.viewMatrix));
-		//
-		//	MageModel.wvp.worldMatrix = XMMatrixMultiply(MageModel.wvp.worldMatrix, zero2);
-		//	MageModel.wvp.worldMatrix = XMMatrixIdentity();
-		//	MageModel.wvp.worldMatrix = XMMatrixMultiply(MageModel.wvp.worldMatrix, XMMatrixScaling(100.0f, 100.0f, 100.0f));
-		//
-		//
-		//
-		//	// Send it to Video Card
-		//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
-		//
-		//	g_DeviceContext->Map(MageModel.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
-		//	*((WVP*)(gpuBuffer.pData)) = MageModel.wvp;
-		//	g_DeviceContext->Unmap(MageModel.constantBuffer, 0);
-		//	ID3D11Buffer* constants2[] = { MageModel.constantBuffer };
-		//
-		//	g_DeviceContext->VSSetConstantBuffers(0, 1, constants2);
-		//	g_DeviceContext->PSSetConstantBuffers(0, 1, constants2);
-		//
-		//
-		//	//Draw
-		//	g_DeviceContext->DrawIndexed(MageModel.IndexCount, 0, 0);
+	//	XMVECTOR Q1;
+	//	XMVECTOR Q2;
+	//
+	//
+	//	for(unsigned int matrixIndex = 0;matrixIndex < MageModel.Animation_Clip.frames[counter].jointsMatrix.size(); matrixIndex++ )
+	//	{
+	//		Q1 = XMQuaternionRotationMatrix(MageModel.Animation_Clip.frames[counter].jointsMatrix[matrixIndex]);
+	//		Q2 = XMQuaternionRotationMatrix(MageModel.Animation_Clip.frames[counter + 1].jointsMatrix[matrixIndex]);
+	//		
+	//		  XMStoreFloat4x4 (&MageModel.wvp.AnimJoint[matrixIndex], XMMatrixRotationQuaternion(XMQuaternionSlerp(Q1, Q2, mod)) );
+	//	}
+	//	/*	for (unsigned int matrixIndex = 0; matrixIndex < MageModel.Animation_Clip.frames[counter].jointsMatrix.size(); matrixIndex++)
+	//		{
+	//			XMStoreFloat4x4 (&MageModel.wvp.AnimJoint[matrixIndex], MageModel.Animation_Clip.frames[counter].jointsMatrix[matrixIndex]);
+	//		}*/
+	//	
+	//	ID3D11Buffer* meshVB2[] = { MageModel.VBuffer };
+	//	UINT mesh_strides2[] = { sizeof(SimpleVertexAnim) };
+	//	UINT mesh_offsets2[] = { 0 };
+	//
+	//	g_DeviceContext->IASetVertexBuffers(0, 1, meshVB2, mesh_strides2, mesh_offsets2);
+	//	g_DeviceContext->IASetIndexBuffer(MageModel.IBuffer, DXGI_FORMAT_R32_UINT, 0);
+	//	g_DeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	//
+	//	g_DeviceContext->VSSetShader(MageModel.VShader, 0, 0);
+	//
+	//	g_DeviceContext->IASetInputLayout(MageModel.VLayout);
+	//
+	//	ID3D11ShaderResourceView* texViews2[]{ MageModel.TextureView_Diffuse ,MageModel.TextureView_Emissive,MageModel.TextureView_Specular };
+	//
+	//
+	//	g_DeviceContext->PSSetShader(MageModel.PShader, 0, 0);
+	//	g_DeviceContext->PSSetShaderResources(0, 3, texViews2);
+	//	g_DeviceContext->PSSetSamplers(0, 1, &wrapState);
+	//
+	//
+	//	//Modify world Matrix before drawing
+	//	//My_Matrices.time = timeX.TotalTimeExact();
+	//	XMMATRIX zero2
+	//	{ 0,0,0,0,
+	//	  0,0,0,0,
+	//	  0,0,0,0,
+	//	  0,0,0,0 };
+	//	//camera_move(MageModel.wvp.viewMatrix);
+	//
+	//	MageModel.wvp.cam = { MageModel.wvp.viewMatrix.r[3].m128_f32[0],MageModel.wvp.viewMatrix.r[3].m128_f32[1],MageModel.wvp.viewMatrix.r[3].m128_f32[2] };
+	//
+	//	//IslandModel.wvp.viewMatrix = (XMMatrixInverse(nullptr, IslandModel.wvp.viewMatrix));
+	//
+	//	MageModel.wvp.worldMatrix = XMMatrixMultiply(MageModel.wvp.worldMatrix, zero2);
+	//	MageModel.wvp.worldMatrix = XMMatrixIdentity();
+	//	MageModel.wvp.worldMatrix = XMMatrixMultiply(MageModel.wvp.worldMatrix, XMMatrixScaling(100.0f, 100.0f, 100.0f));
+	//
+	//
+	//
+	//	// Send it to Video Card
+	//	//D3D11_MAPPED_SUBRESOURCE gpuBuffer;
+	//
+	//	g_DeviceContext->Map(MageModel.constantBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &gpuBuffer);
+	//	*((WVP*)(gpuBuffer.pData)) = MageModel.wvp;
+	//	g_DeviceContext->Unmap(MageModel.constantBuffer, 0);
+	//	ID3D11Buffer* constants2[] = { MageModel.constantBuffer };
+	//
+	//	g_DeviceContext->VSSetConstantBuffers(0, 1, constants2);
+	//	g_DeviceContext->PSSetConstantBuffers(0, 1, constants2);
+	//
+	//
+	//	//Draw
+	//	g_DeviceContext->DrawIndexed(MageModel.IndexCount, 0, 0);
 #pragma endregion
 
 
@@ -829,7 +829,7 @@ WATA.waterBufferData.waterTranslation=  WBT.waterTranslation = timeX.TotalTime()
 }
 
 
-Water Renderer::InitializeObjects()
+void Renderer::InitializeObjects()
 {
 	SimpleMesh IslandMesh;
 	std::fstream Ofile{ "ObjectData/Island.MObj", std::ios_base::in | std::ios_base::binary };
@@ -936,8 +936,8 @@ Water Renderer::InitializeObjects()
 	};
 	Skybox = InitializeModelData(g_Device, Sky.vertexList, Sky.indicesList, SkyboxVertexShader, SkyboxPixelShader, sizeof(SkyboxVertexShader), sizeof(SkyboxPixelShader), skyInputEDesc, 3, filePathWChar);
 	Skybox.wvp.viewMatrix = defaultView;
-	
-		CreateDDSTextureFromFile(g_Device, L"Assets/Skybox_RockyIslands.dds", (ID3D11Resource**)&Skybox.SkyCubeTexture, &Skybox.TextureView_SkyBox);
+
+	CreateDDSTextureFromFile(g_Device, L"Assets/Skybox_RockyIslands.dds", (ID3D11Resource**)&Skybox.SkyCubeTexture, &Skybox.TextureView_SkyBox);
 	Skybox.wvp.projMatrix = XMMatrixPerspectiveFovLH(3.14f / 2.0f, g_aspectRatio, 0.1f, 1000000);
 	Skybox.RenderToTexture(g_Device, g_width, g_height);
 #pragma endregion
@@ -982,7 +982,7 @@ Water Renderer::InitializeObjects()
 	WATA.InitializeShadersAndLayout(g_Device, true);
 	WATA.RenderToTexture(g_Device, g_width, g_height, true);
 	WATA.WaterWVPCam.projMatrix = Water_Old.wvp.projMatrix = XMMatrixPerspectiveFovLH(3.14f / 2.0f, g_aspectRatio, 0.1f, 1000000);
-	WATA.SetNormalTexture(g_Device,L"Assets/normalWater.dds");
+	WATA.SetNormalTexture(g_Device, L"Assets/normalWater.dds");
 #pragma endregion
 
 #pragma region Extra Buffers
@@ -1091,7 +1091,7 @@ Water Renderer::InitializeObjects()
 
 
 	g_Device->CreateSamplerState(&sWDesc, &wrapState);
-	return WATA;
+	waterPond = WATA;
 
 }
 void Renderer::Release()
